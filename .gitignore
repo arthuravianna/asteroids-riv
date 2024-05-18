@@ -1,0 +1,5 @@
+*.o
+asteroids
+asteroids.sqfs
+.vscode/
+*.zip
