@@ -10,6 +10,7 @@ void shoot(Spaceship *spaceship) {
     Shot player_shot;
     player_shot.direction = spaceship->direction;
     player_shot.position = (riv_vec2f)spaceship->position;
+    player_shot.size = SHOT_SIZE;
 
     push(spaceship->shots, &player_shot, sizeof(Shot));
 }
@@ -41,11 +42,11 @@ void update_spaceship(Spaceship *spaceship) {
     }
 
     // TODO shoot
-    if (riv->keys[RIV_GAMEPAD_A1].press) {
-        riv_printf("SHOOT\n");
+    bool shot_cooldown = riv->frame - spaceship->last_shot_frame < SHOT_COOLDOWN*riv->target_fps;
+    if (riv->keys[RIV_GAMEPAD_A1].press && !shot_cooldown) {
         shoot(spaceship);
+        spaceship->last_shot_frame = riv->frame;
     }
-    update_shots(spaceship->shots);
 }
 
 
@@ -55,12 +56,10 @@ void draw_spaceship(Spaceship spaceship) {
     // draw spaceship info
     char player_info[20];
     sprintf(player_info, "(%f, %f)", spaceship.position.x, spaceship.position.y);
-    riv_draw_text(player_info, RIV_SPRITESHEET_FONT_3X5, RIV_TOPLEFT, 0, 5, 1, RIV_COLOR_RED);
+    //riv_draw_text(player_info, RIV_SPRITESHEET_FONT_3X5, RIV_TOPLEFT, 0, 5, 1, RIV_COLOR_RED);
 
 
     // draw spaceship
-    riv_draw_line(spaceship.position.x*(TILE_SIZE) + (TILE_SIZE/2), spaceship.position.y*(TILE_SIZE) + (TILE_SIZE/2), (spaceship.position.x + dir_coords.x) * TILE_SIZE + (TILE_SIZE/2),(spaceship.position.y + dir_coords.y) * TILE_SIZE + (TILE_SIZE/2), RIV_COLOR_BLUE);
-    riv_draw_rect_fill(spaceship.position.x*TILE_SIZE, spaceship.position.y*TILE_SIZE, TILE_SIZE, TILE_SIZE, RIV_COLOR_BLUE);
-
-    draw_shots(spaceship.shots);
+    riv_draw_line(spaceship.position.x*(TILE_SIZE) + (spaceship.size/2), spaceship.position.y*(TILE_SIZE) + (spaceship.size/2), (spaceship.position.x + dir_coords.x) * TILE_SIZE + (spaceship.size/2),(spaceship.position.y + dir_coords.y) * TILE_SIZE + (spaceship.size/2), RIV_COLOR_BLUE);
+    riv_draw_rect_fill(spaceship.position.x*TILE_SIZE, spaceship.position.y*TILE_SIZE, spaceship.size, spaceship.size, RIV_COLOR_BLUE);
 }

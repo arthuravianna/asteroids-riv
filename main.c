@@ -1,8 +1,9 @@
+#include <stdio.h>
 #include <math.h>
 #include <riv.h>
 #include "game.h"
-//#include "asteroids.h"
 #include "spaceship.h"
+#include "asteroids.h"
 
 enum GAME_STATE {
     MENU,
@@ -13,7 +14,13 @@ enum GAME_STATE {
 enum GAME_STATE game_state;
 
 Spaceship player;
-//Asteroids asteroids;
+List *asteroids;
+int score = 0;
+float spawn_probability = 0.05;
+int spawn_cooldown = 2; // in seconds
+int last_spawn_frame = 0;
+int probability_increase_cooldown = 5;
+int last_frame = 0; // used to count time in seconds
 
 ////////////
 // draw
@@ -38,8 +45,15 @@ void draw_menu_screen() {
 
 // Draw the game map
 void draw_game_screen() {
-    // TODO: draw game
     draw_spaceship(player);
+    draw_shots(*player.shots);
+
+    draw_asteroids(*asteroids);
+
+    // draw score
+    char score_info[20];
+    sprintf(score_info, "Score: %d", score);
+    riv_draw_text(score_info, RIV_SPRITESHEET_FONT_3X5, RIV_TOPLEFT, 0, 5, 1, RIV_COLOR_WHITE);
 }
 
 void draw_game_over_screen() {
@@ -60,8 +74,17 @@ void start_game() {
     // initialize game variables
     player.direction = M_PI; // 90 degrees
     player.position = (riv_vec2f){MAP_SIZE / 2, MAP_SIZE / 2};
+    player.size = TILE_SIZE;
     player.lifes = DEFAULT_PLAYER_LIFES;
     player.shots = initList();
+    player.last_shot_frame = -1000;
+
+    asteroids = initList();
+    Asteroid asteroid;
+    for (int i = 0; i < DEFAULT_INITIAL_ASTEROIDS; i++) {
+        asteroid = spawn_asteroid();
+        push(asteroids, &asteroid, sizeof(Asteroid));
+    }
 }
 
 // Called when game ends
@@ -71,6 +94,7 @@ void end_game() {
     
     // free allocated memory
     clear(player.shots);
+    clear(asteroids);
 
     // Quit in 3 seconds
     riv->quit_frame = riv->frame + 3*riv->target_fps;
@@ -83,11 +107,162 @@ void update_menu() {
     }
 }
 
+bool collided(Asteroid *asteroid, void *object, OBJECT type) {
+    riv_vec2f obj_position;
+    int obj_size;
+
+    switch (type) {
+        case SPACESHIP:
+            Spaceship *spaceship = (Spaceship *)object;
+            obj_position = spaceship->position;
+            obj_size = spaceship->size;
+            break;
+        
+        case SHOT:
+            Shot *shot = (Shot *)object;
+            obj_position = shot->position;
+            obj_size = shot->size;
+            break;
+
+        case ASTEROID:
+            Asteroid *asteroid = (Asteroid *)object;
+            obj_position = asteroid->position;
+            obj_size = ASTEROIDS_SIZES[asteroid->type];
+            break;
+    }
+
+    int asteroid_size = ASTEROIDS_SIZES[asteroid->type];
+    float asteroid_x = asteroid->position.x*TILE_SIZE;
+    float asteroid_y = asteroid->position.y*TILE_SIZE;
+    float obj_x = obj_position.x*TILE_SIZE;
+    float obj_y = obj_position.y*TILE_SIZE;
+    bool collided = false;
+
+    // check if one of the extremes of object
+    // is in contact with the asteroid
+    // (x0,y0), (x1,y0), (x0, y1), (x1,y1)
+    if (
+        (
+            obj_x >= asteroid_x &&
+            obj_y >= asteroid_y &&
+            obj_x <= asteroid_x + asteroid_size &&
+            obj_y <= asteroid_y + asteroid_size
+        ) ||
+        (
+            obj_x + obj_size >= asteroid_x &&
+            obj_y >= asteroid_y &&
+            obj_x + obj_size <= asteroid_x + asteroid_size &&
+            obj_y <= asteroid_y + asteroid_size
+
+        ) ||
+
+        (
+            obj_x >= asteroid_x &&
+            obj_y + obj_size >= asteroid_y &&
+            obj_x <= asteroid_x + asteroid_size &&
+            obj_y + obj_size <= asteroid_y + asteroid_size
+
+        ) ||
+
+        (
+            obj_x + obj_size >= asteroid_x &&
+            obj_y + obj_size >= asteroid_y &&
+            obj_x + obj_size <= asteroid_x + asteroid_size &&
+            obj_y + obj_size <= asteroid_y + asteroid_size
+
+        )
+    ) {
+        collided = true;
+    }
+    
+    return collided;
+}
+
+
 // Update game logic
 void update_game() {
+    // update spaceship position
     update_spaceship(&player);
 
-    //end_game();
+    // update shots positions
+    update_shots(player.shots);
+
+    // update asteroids positions and check collisions
+    Node *node = asteroids->first;
+    Asteroid *asteroid;
+    int asteroid_index = 0;
+    int shot_index;
+    Node *node2;
+    while (node) {
+        asteroid = (Asteroid*)node->data;
+        update_asteroid(asteroid);
+        
+        bool collision = false;
+
+        collision = collided(asteroid, &player, SPACESHIP);
+        if (collision) {
+            player.lifes = player.lifes-1;
+            if (player.lifes == 0) end_game();
+
+            removeNode(asteroids, asteroid_index);
+        }
+        
+        // check collision with a shot
+        node2 = player.shots->first;
+        shot_index = 0;
+        while (!collision && node2) {
+            Shot *shot = (Shot *)node2->data;
+            collision = collided(asteroid, shot, SHOT);
+            if (collision) {
+                removeNode(asteroids, asteroid_index);
+                removeNode(player.shots, shot_index);
+                score += ASTEROIDS_SCORE[asteroid->type];
+            }
+
+            node2 = node2->next;
+            shot_index++;
+        }
+
+        // check collision with another asteroid
+        // node2 = node->next;
+        // while (!collision && node2) {
+        //     Asteroid *asteroid2 = (Asteroid*)node2->data;
+        //     collision = collided(asteroid, asteroid2, ASTEROID);
+        //     if (collision) {
+        //         removeNode(asteroids, asteroid_index);
+        //         // TODO: destroy asteroid2
+        //         break;
+        //     }
+
+        //     node2 = node2->next;
+        // }
+
+        // next asteroid in the list
+        node = node->next;
+        if (!collision) asteroid_index++;
+    }
+
+    // spawn asteroid
+    if (!(riv->frame - last_spawn_frame < spawn_cooldown*riv->target_fps)) {
+        last_spawn_frame = riv->frame;
+        
+        Asteroid asteroid;
+        if (asteroids->len == 0) {
+            for (int i = 0; i < 3; i++) {
+                asteroid = spawn_asteroid();
+                push(asteroids, &asteroid, sizeof(Asteroid));
+            }
+
+        } else if (riv_rand_float() <= spawn_probability) {
+            asteroid = spawn_asteroid();
+            push(asteroids, &asteroid, sizeof(Asteroid));
+        }
+    }
+
+    if (!(riv->frame - last_frame < probability_increase_cooldown*riv->target_fps)) {
+        spawn_probability += 0.01;
+        last_frame = riv->frame;
+    }
 }
 
 

@@ -13,7 +13,7 @@ List* initList() {
 int push(List *l, void *data, size_t datasize) {
     if (!l) return 0;
     
-    Node* node = (Node*)malloc(sizeof(Node));
+    Node *node = malloc(sizeof(Node));
     node->data = malloc(datasize);
     node->next = l->first;
 

@@ -1,10 +1,9 @@
-#include <stdio.h>
+#ifndef linked_list
+#define linked_list
+
 #include <stdlib.h>
 #include <string.h>
 
-
-#ifndef linked_list
-#define linked_list
 
 typedef struct linked_list_node {
     void *data;

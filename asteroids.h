@@ -1,20 +1,30 @@
+#ifndef asteroid_h
+#define asteroid_h
+
+
 #include <riv.h>
 #include "game.h"
+#include "list.h"
 
 
-#define MAX_ASTEROIDS 30
+#define BIG_ASTEROID 0
+#define MEDIUM_ASTEROID 1
+#define SMALL_ASTEROID 2
 
-struct Asteroid {
-    riv_vec2i position;     // position of the asteroid
-    riv_vec2i direction;    // direction of the asteroid
-};
+static int ASTEROIDS_SIZES[] = {32, 16, 8};
+static int ASTEROIDS_PNGS[] = {0, 2, 3};
+static int ASTEROIDS_SCORE[] = {20, 50, 100};
+
+typedef struct {
+    riv_vec2f position;     // position of the asteroid
+    float direction;        // direction of the asteroid
+    int type;
+} Asteroid;
 
 
-typedef struct asteroids_obstacles {
-    struct Asteroid asteroids[MAX_ASTEROIDS];
-    int last_shot;
-} Asteroids;
+void update_asteroid(Asteroid *asteroid);
+void draw_asteroid(Asteroid asteroid);
+void draw_asteroids(List asteroids);
+Asteroid spawn_asteroid();
 
-void update_asteroids(Asteroids *asteroids);
-void draw_asteroids(Asteroids asteroids);
-
+#endif
