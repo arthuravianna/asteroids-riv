@@ -4,9 +4,11 @@
 
 bool update_shot(Shot *shot) {
     riv_vec2f dir_coords = (riv_vec2f){ sin(shot->direction), cos(shot->direction) };
-    
-    // up makes the spaceship move in the current direction
-    riv_vec2f next_shot_pos = (riv_vec2f){shot->position.x + dir_coords.x*SHOT_SPEED, shot->position.y + dir_coords.y*SHOT_SPEED};
+
+    float magnitude = sqrt(dir_coords.x*dir_coords.x + dir_coords.y*dir_coords.y);
+    float unitVectorX = dir_coords.x/magnitude;
+    float unitVectorY = dir_coords.y/magnitude;
+    riv_vec2f next_shot_pos = (riv_vec2f){shot->position.x + unitVectorX*shot->speed, shot->position.y + unitVectorY*shot->speed};
     
     // check if the next position is valid
     if (next_shot_pos.x < 0 || next_shot_pos.y < 0 || next_shot_pos.x > MAP_SIZE || next_shot_pos.y > MAP_SIZE) {
@@ -18,7 +20,7 @@ bool update_shot(Shot *shot) {
 }
 
 void draw_shot(Shot shot) {
-    riv_draw_rect_line(shot.position.x*TILE_SIZE, shot.position.y*TILE_SIZE, shot.size, shot.size, RIV_COLOR_RED);
+    riv_draw_rect_line(shot.position.x, shot.position.y, shot.size, shot.size, RIV_COLOR_WHITE);
 }
 
 

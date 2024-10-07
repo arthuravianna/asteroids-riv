@@ -7,14 +7,13 @@
 #include "list.h"
 
 
-#define SHOT_SPEED 0.3
-#define SHOT_COOLDOWN 0.3 // in seconds
 #define SHOT_SIZE 2
 
 typedef struct {
     riv_vec2f position;     // position of the shot
     float direction;        // direction of the shot
     int size;
+    float speed;
 } Shot;
 
 // returns 1 if shot is out of the MAP

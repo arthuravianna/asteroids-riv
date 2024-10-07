@@ -1,0 +1,13 @@
+{
+    "name": "Asteroids",
+    "summary": "An Atari classic",
+    "description": "",
+    "status": "prototype",
+    "tags": ["arcade"],
+    "authors": [{
+        "name": "Arthur Vianna",
+        "link": "https://github.com/arthuravianna"
+    }],
+    "url": "https://github.com/arthuravianna/asteroids-riv",
+    "links": ["https://github.com/arthuravianna/asteroids-riv"]
+}

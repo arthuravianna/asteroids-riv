@@ -22,7 +22,7 @@ inspect-cartridge:
 
 # compiled (default)
 create-cartridge: compile-game
-	rivemu -quiet -no-window -sdk -workspace -exec riv-mksqfs ${GAME} ${GAME}.sqfs
+	rivemu -quiet -no-window -sdk -workspace -exec riv-mksqfs ${GAME} info.json ${GAME}.sqfs
 
 compile-game: list.o shots.o spaceship.o asteroids.o
 	@echo "Optimizing by: ${OPTIMIZE_BY}"
